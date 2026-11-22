@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<script>if(!['circle-media-nyr-app.vercel.app','localhost','127.0.0.1'].includes(location.hostname)){document.write('<body style="margin:0;height:100vh;display:grid;place-items:center;background:#1e2128;color:#e6e9ef;font-family:system-ui">link tidak resmi! Tidak dapat dibuka!</body>');throw new Error('blocked')}</script>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Circle</title>
+<style>
+:root{--bg:#1e2128;--panel:#252932;--line:#343a46;--text:#e6e9ef;--muted:#9aa3b2;--accent:#4f5fd6;--r:6px}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,sans-serif}
+button,input{font:inherit;color:inherit}
+button{background:var(--accent);border:0;border-radius:var(--r);padding:8px 14px;cursor:pointer;transition:opacity .15s}
+button:hover{opacity:.9}button:disabled{opacity:.5;cursor:default}
+button.ghost{background:transparent;border:1px solid var(--line)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+input{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:var(--r);padding:9px 12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:24px;width:min(360px,92vw);box-shadow:0 2px 8px rgba(0,0,0,.25);display:grid;gap:12px}
+.center{height:100%;display:grid;place-items:center}
+#app{height:100%;display:grid;grid-template-columns:260px 1fr}
+aside{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+aside h4{margin:14px 16px 6px;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+.list{overflow:auto;padding:0 8px}
+.item{display:block;width:100%;text-align:left;background:transparent;padding:6px 10px;border-radius:var(--r);color:var(--muted)}
+.item.on{background:var(--line);color:var(--text)}
+.tools{display:flex;gap:6px;flex-wrap:wrap;padding:8px 12px}
+.tools button{padding:4px 10px;font-size:13px}
+.me{margin-top:auto;border-top:1px solid var(--line);padding:12px;display:grid;gap:8px}
+section{display:flex;flex-direction:column;min-height:0}
+header{padding:12px 16px;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:center}
+#menu{display:none}
+#msgs{flex:1;overflow:auto;padding:16px;display:grid;align-content:start;gap:12px}
+.msg b{margin-right:8px}.msg small{color:var(--muted)}
+.msg p{margin:2px 0;white-space:pre-wrap;word-break:break-word}
+.msg img,.msg video{max-width:min(420px,100%);border-radius:var(--r);margin-top:4px;display:block}
+.msg .del{background:transparent;color:var(--muted);padding:0 6px;font-size:12px}
+form.send{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--line)}
+dialog{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:var(--r);width:min(380px,92vw)}
+dialog::backdrop{background:rgba(0,0,0,.5)}
+dialog form{display:grid;gap:10px}dialog label{display:grid;gap:4px;color:var(--muted);font-size:13px}
+.row{display:flex;gap:8px;justify-content:flex-end}
+.err{color:#e5736f;min-height:1.2em;margin:0}
+@media(max-width:700px){
+ #app{grid-template-columns:1fr}
+ aside{position:fixed;inset:0 20% 0 0;z-index:5;transform:translateX(-100%);transition:transform .2s}
+ aside.open{transform:none}#menu{display:block}
+}
+</style>
+</head>
+<body>
+<main id="login" class="center">
+ <form id="loginForm" class="card">
+  <h2 style="margin:0">Masuk ke Circle</h2>
+  <input id="u" placeholder="Username" autocomplete="username" required>
+  <input id="p" type="password" placeholder="Password" autocomplete="current-password" required>
+  <p id="err" class="err"></p>
+  <button>Masuk</button>
+ </form>
+</main>
+
+<div id="app" hidden>
+ <aside id="side">
+  <h4>Komunitas</h4><div id="comms" class="list"></div>
+  <h4>Channel</h4><div id="chans" class="list"></div>
+  <div id="staffTools" class="tools" hidden>
+   <button class="ghost" id="addComm">+ Komunitas</button>
+   <button class="ghost" id="addChan">+ Channel</button>
+   <button class="ghost" id="addMember" hidden>+ Akun</button>
+  </div>
+  <div class="me"><div id="meName"></div>
+   <div class="row" style="justify-content:flex-start"><button class="ghost" id="editMe">Profil</button><button class="ghost" id="out">Keluar</button></div>
+  </div>
+ </aside>
+ <section>
+  <header><button class="ghost" id="menu" aria-label="Menu">Menu</button><strong id="title">Pilih channel</strong></header>
+  <div id="msgs"></div>
+  <form class="send" id="sendForm" hidden>
+   <button type="button" class="ghost" id="attachBtn" aria-label="Lampirkan file">File</button>
+   <input id="file" type="file" accept="image/*,video/*" hidden>
+   <input id="text" placeholder="Tulis pesan" autocomplete="off">
+   <button id="sendBtn">Kirim</button>
+  </form>
+ </section>
+</div>
+<dialog id="dlg"><form id="dlgForm"></form></dialog>
+
+<script type="module">
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import {getAuth,signInWithEmailAndPassword,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import {getFirestore,collection,doc,getDoc,addDoc,deleteDoc,updateDoc,onSnapshot,query,orderBy,limit} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+const $ = (s) => document.querySelector(s);
+const config = await (await fetch('/api/config')).json();
+const firebaseApp = initializeApp(config);
+const auth = getAuth(firebaseApp);
+const db = getFirestore(firebaseApp);
+
+let me = null, communityId = null, channelId = null;
+let stopComms = null, stopChans = null, stopMsgs = null;
+const urlCache = new Map();
+const isStaff = () => ['owner', 'admin'].includes(me?.role);
+
+async function api(path, body) {
+  const token = await auth.currentUser.getIdToken();
+  const res = await fetch(path, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', Authorization: `Bearer ${token}`},
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Permintaan gagal');
+  return data;
+}
+
+function ask(title, fields) {
+  return new Promise((resolve) => {
+    const form = $('#dlgForm');
+    form.replaceChildren();
+    const h = document.createElement('h3');
+    h.textContent = title;
+    form.append(h);
+    fields.forEach(([name, label, type = 'text', value = '']) => {
+      const l = document.createElement('label');
+      l.textContent = label;
+      const i = document.createElement('input');
+      Object.assign(i, {name, type, value});
+      l.append(i);
+      form.append(l);
+    });
+    const row = document.createElement('div');
+    row.className = 'row';
+    const cancel = document.createElement('button');
+    cancel.type = 'button'; cancel.className = 'ghost'; cancel.textContent = 'Batal';
+    cancel.onclick = () => { $('#dlg').close(); resolve(null); };
+    const ok = document.createElement('button');
+    ok.textContent = 'Simpan';
+    row.append(cancel, ok);
+    form.append(row);
+    form.onsubmit = (e) => { e.preventDefault(); resolve(Object.fromEntries(new FormData(form))); $('#dlg').close(); };
+    $('#dlg').showModal();
+  });
+}
+
+function renderList(box, docs, activeId, onPick) {
+  box.replaceChildren(...docs.map((d) => {
+    const b = document.createElement('button');
+    b.className = 'item' + (d.id === activeId ? ' on' : '');
+    b.textContent = d.data().name;
+    b.onclick = () => onPick(d);
+    return b;
+  }));
+}
+
+function watchCommunities() {
+  stopComms?.();
+  stopComms = onSnapshot(collection(db, 'communities'), (snap) => {
+    renderList($('#comms'), snap.docs, communityId, (d) => { communityId = d.id; channelId = null; watchChannels(); watchCommunities(); });
+  });
+}
+
+function watchChannels() {
+  stopChans?.(); stopMsgs?.();
+  $('#msgs').replaceChildren(); $('#sendForm').hidden = true; $('#title').textContent = 'Pilih channel';
+  if (!communityId) return;
+  stopChans = onSnapshot(collection(db, `communities/${communityId}/channels`), (snap) => {
+    renderList($('#chans'), snap.docs, channelId, (d) => { channelId = d.id; $('#title').textContent = '# ' + d.data().name; $('#side').classList.remove('open'); watchChannels2(snap); watchMessages(); });
+  });
+}
+const watchChannels2 = () => {};
+
+function watchMessages() {
+  stopMsgs?.();
+  $('#sendForm').hidden = false;
+  const q = query(collection(db, `communities/${communityId}/channels/${channelId}/messages`), orderBy('createdAt'), limit(100));
+  stopMsgs = onSnapshot(q, async (snap) => {
+    const missing = snap.docs.map((d) => d.data().fileKey).filter((k) => k && !urlCache.has(k));
+    for (let i = 0; i < missing.length; i += 30) {
+      try {
+        const {urls} = await api('/api/download-url', {keys: missing.slice(i, i + 30)});
+        Object.entries(urls).forEach(([k, v]) => urlCache.set(k, v));
+      } catch (e) { console.error(e); }
+    }
+    const box = $('#msgs');
+    box.replaceChildren(...snap.docs.map((d) => messageEl(d)));
+    box.scrollTop = box.scrollHeight;
+  });
+}
+
+function messageEl(d) {
+  const m = d.data();
+  const el = document.createElement('div');
+  el.className = 'msg';
+  const head = document.createElement('div');
+  const who = document.createElement('b'); who.textContent = m.name;
+  const when = document.createElement('small'); when.textContent = new Date(m.createdAt).toLocaleString('id-ID', {dateStyle: 'short', timeStyle: 'short'});
+  head.append(who, when);
+  if (isStaff() || m.uid === me.uid) {
+    const del = document.createElement('button');
+    del.className = 'del'; del.textContent = 'Hapus';
+    del.onclick = () => deleteDoc(d.ref);
+    head.append(del);
+  }
+  el.append(head);
+  if (m.text) { const p = document.createElement('p'); p.textContent = m.text; el.append(p); }
+  if (m.fileKey) {
+    const url = urlCache.get(m.fileKey);
+    if (url) {
+      const media = document.createElement(m.fileType?.startsWith('video') ? 'video' : 'img');
+      media.src = url;
+      if (media.tagName === 'VIDEO') media.controls = true; else media.alt = 'Lampiran';
+      el.append(media);
+    }
+  }
+  return el;
+}
+
+async function uploadFile(file) {
+  const {key, uploadUrl} = await api('/api/upload-url', {contentType: file.type, size: file.size});
+  const res = await fetch(uploadUrl, {method: 'PUT', headers: {'Content-Type': file.type}, body: file});
+  if (!res.ok) throw new Error('Upload gagal, cek CORS bucket');
+  return key;
+}
+
+$('#sendForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const text = $('#text').value.trim();
+  const file = $('#file').files[0];
+  if (!text && !file) return;
+  $('#sendBtn').disabled = true;
+  try {
+    const msg = {uid: me.uid, name: me.name, text, createdAt: Date.now()};
+    if (file) { msg.fileKey = await uploadFile(file); msg.fileType = file.type; }
+    await addDoc(collection(db, `communities/${communityId}/channels/${channelId}/messages`), msg);
+    $('#text').value = ''; $('#file').value = ''; $('#attachBtn').textContent = 'File';
+  } catch (err) { alert(err.message); }
+  $('#sendBtn').disabled = false;
+};
+$('#attachBtn').onclick = () => $('#file').click();
+$('#file').onchange = () => { $('#attachBtn').textContent = $('#file').files[0] ? 'Dipilih' : 'File'; };
+$('#menu').onclick = () => $('#side').classList.toggle('open');
+
+$('#addComm').onclick = async () => {
+  const v = await ask('Komunitas baru', [['name', 'Nama komunitas']]);
+  if (v?.name.trim()) await addDoc(collection(db, 'communities'), {name: v.name.trim(), createdBy: me.uid});
+};
+$('#addChan').onclick = async () => {
+  if (!communityId) return alert('Pilih komunitas dulu');
+  const v = await ask('Channel baru', [['name', 'Nama channel']]);
+  if (v?.name.trim()) await addDoc(collection(db, `communities/${communityId}/channels`), {name: v.name.trim()});
+};
+$('#addMember').onclick = async () => {
+  const v = await ask('Buat akun member', [['username', 'Username (huruf kecil/angka)'], ['password', 'Password', 'password'], ['name', 'Nama tampilan'], ['role', 'Role (admin / member)', 'text', 'member']]);
+  if (!v) return;
+  try { await api('/api/create-member', v); alert('Akun dibuat'); } catch (err) { alert(err.message); }
+};
+$('#editMe').onclick = async () => {
+  const v = await ask('Ubah profil', [['name', 'Nama tampilan', 'text', me.name], ['bio', 'Bio', 'text', me.bio || '']]);
+  if (!v?.name.trim()) return;
+  await updateDoc(doc(db, 'users', me.uid), {name: v.name.trim().slice(0, 40), bio: v.bio.slice(0, 120)});
+  Object.assign(me, {name: v.name.trim(), bio: v.bio});
+  $('#meName').textContent = `${me.name} (${me.role})`;
+};
+$('#out').onclick = () => signOut(auth);
+
+$('#loginForm').onsubmit = async (e) => {
+  e.preventDefault();
+  $('#err').textContent = '';
+  try { await signInWithEmailAndPassword(auth, `${$('#u').value.trim().toLowerCase()}@circle.local`, $('#p').value); }
+  catch { $('#err').textContent = 'Username atau password salah'; }
+};
+
+onAuthStateChanged(auth, async (user) => {
+  stopComms?.(); stopChans?.(); stopMsgs?.();
+  if (!user) { $('#app').hidden = true; $('#login').hidden = false; return; }
+  const snap = await getDoc(doc(db, 'users', user.uid));
+  if (!snap.exists()) { $('#err').textContent = 'Akun belum terdaftar'; signOut(auth); return; }
+  me = {uid: user.uid, ...snap.data()};
+  $('#login').hidden = true; $('#app').hidden = false;
+  $('#meName').textContent = `${me.name} (${me.role})`;
+  $('#staffTools').hidden = !isStaff();
+  $('#addMember').hidden = me.role !== 'owner';
+  communityId = channelId = null;
+  watchCommunities();
+});
+</script>
+</body>
+</html>
