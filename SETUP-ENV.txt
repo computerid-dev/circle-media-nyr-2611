@@ -1,0 +1,39 @@
+SETUP ENVIRONMENT VARIABLE
+Isi di project Vercel "circle-media-nyr-app" (Root Directory: circle-app)
+Vercel > Settings > Environment Variables
+
+Key: B2_KEY_ID
+Value: keyID dari Application Key "circle-app" (bukan master key)
+
+Key: B2_APPLICATION_KEY
+Value: applicationKey dari Application Key "circle-app"
+
+Key: B2_BUCKET
+Value: circle-media-nyr-2611
+
+Key: B2_ENDPOINT
+Value: https://s3.us-east-005.backblazeb2.com
+
+Key: B2_REGION
+Value: us-east-005
+
+Key: FIREBASE_PROJECT_ID
+Value: circle-media-nyr-2611
+
+Key: FIREBASE_WEB_API_KEY
+Value: AIzaSyB8cVldP6E9aohyM51g2RYIRx4NwlMs8OA
+
+Key: FIREBASE_AUTH_DOMAIN
+Value: circle-media-nyr-2611.firebaseapp.com
+
+Key: FIREBASE_APP_ID
+Value: 1:314167177695:web:fc214aea32c7505288946a
+
+Key: FIREBASE_CLIENT_EMAIL
+Value: client_email dari file JSON service account
+
+Key: FIREBASE_PRIVATE_KEY
+Value: private_key dari file JSON service account (satu baris, \n dibiarkan apa adanya)
+
+Key: OWNER_SETUP_SECRET
+Value: kata rahasia bebas buatanmu, dipakai sekali untuk membuat owner pertama
