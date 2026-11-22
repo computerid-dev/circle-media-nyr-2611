@@ -1,16 +1,17 @@
 import { S3Client } from '@aws-sdk/client-s3';
+import { SECRETS } from './secrets.js';
 
 let cachedClient;
 
 export function getClient() {
   if (!cachedClient) {
     cachedClient = new S3Client({
-      region: process.env.B2_REGION,
-      endpoint: process.env.B2_ENDPOINT,
+      region: SECRETS.B2_REGION,
+      endpoint: SECRETS.B2_ENDPOINT,
       forcePathStyle: true,
       credentials: {
-        accessKeyId: process.env.B2_KEY_ID,
-        secretAccessKey: process.env.B2_APPLICATION_KEY,
+        accessKeyId: SECRETS.B2_KEY_ID,
+        secretAccessKey: SECRETS.B2_APPLICATION_KEY,
       },
       // B2 belum cocok dengan checksum otomatis SDK versi baru
       requestChecksumCalculation: 'WHEN_REQUIRED',
@@ -21,5 +22,5 @@ export function getClient() {
 }
 
 export function getBucket() {
-  return process.env.B2_BUCKET;
+  return SECRETS.B2_BUCKET;
 }
