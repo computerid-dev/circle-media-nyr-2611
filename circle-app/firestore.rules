@@ -4,25 +4,49 @@ service cloud.firestore {
     function signedIn() { return request.auth != null; }
     function myRole() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role; }
     function isStaff() { return signedIn() && myRole() in ['owner', 'admin']; }
+    function isCreator(c) { return get(/databases/$(database)/documents/communities/$(c)).data.createdBy == request.auth.uid; }
+    function isModMember(c) {
+      return exists(/databases/$(database)/documents/communities/$(c)/members/$(request.auth.uid))
+        && get(/databases/$(database)/documents/communities/$(c)/members/$(request.auth.uid)).data.mod == true;
+    }
+    function isMod(c) { return isStaff() || isCreator(c) || isModMember(c); }
 
     match /users/{userId} {
       allow read: if signedIn();
       allow update: if request.auth.uid == userId
-        && request.resource.data.role == resource.data.role;
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'bio', 'avatarKey']);
     }
 
-    match /communities/{communityId} {
+    match /communities/{c} {
       allow read: if signedIn();
-      allow write: if isStaff();
+      allow create: if signedIn() && request.resource.data.createdBy == request.auth.uid;
+      allow update, delete: if isMod(c);
 
+      match /roles/{roleId} {
+        allow read: if signedIn();
+        allow write: if isMod(c);
+      }
+      match /members/{userId} {
+        allow read: if signedIn();
+        allow write: if isMod(c);
+      }
       match /channels/{channelId} {
         allow read: if signedIn();
-        allow write: if isStaff();
+        allow write: if isMod(c);
 
         match /messages/{messageId} {
           allow read: if signedIn();
           allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
-          allow delete: if isStaff() || resource.data.uid == request.auth.uid;
+          allow delete: if isMod(c) || resource.data.uid == request.auth.uid;
+        }
+        // Ruang suara: kehadiran peserta dan sinyal WebRTC
+        match /voice/{userId} {
+          allow read: if signedIn();
+          allow write: if request.auth.uid == userId;
+        }
+        match /signals/{sigId} {
+          allow create: if signedIn() && request.resource.data.from == request.auth.uid;
+          allow read, delete: if signedIn() && resource.data.to == request.auth.uid;
         }
       }
     }
