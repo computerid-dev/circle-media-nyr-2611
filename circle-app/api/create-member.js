@@ -1,5 +1,6 @@
 import { adminAuth, adminDb } from '../lib/admin.js';
 import { applyCors, requireMember } from '../lib/auth.js';
+import { SECRETS } from '../lib/secrets.js';
 
 const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/;
 const MEMBER_ROLES = ['admin', 'member'];
@@ -14,7 +15,7 @@ export default async function handler(req, res) {
   let finalRole = role;
 
   // Akun owner pertama dibuat sekali lewat setupSecret, selanjutnya harus login sebagai owner
-  const isBootstrap = Boolean(setupSecret) && setupSecret === process.env.OWNER_SETUP_SECRET;
+  const isBootstrap = Boolean(setupSecret) && setupSecret !== 'ISI_SENDIRI' && setupSecret === SECRETS.OWNER_SETUP_SECRET;
 
   if (isBootstrap) {
     finalRole = 'owner';
