@@ -1,5 +1,6 @@
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { isAllowedOrigin } from '../proxy/proxy.js';
+import { SECRETS } from './secrets.js';
 
 const FIREBASE_JWKS_URL =
   'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com';
@@ -38,7 +39,7 @@ export async function requireMember(req, res) {
   }
 
   try {
-    const projectId = process.env.FIREBASE_PROJECT_ID;
+    const projectId = SECRETS.FIREBASE_PROJECT_ID;
     const { payload } = await jwtVerify(token, jwks, {
       issuer: `https://securetoken.google.com/${projectId}`,
       audience: projectId,
