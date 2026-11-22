@@ -1,0 +1,9 @@
+export default function handler(req, res) {
+  res.setHeader('Cache-Control', 'public, max-age=300');
+  res.status(200).json({
+    apiKey: process.env.FIREBASE_WEB_API_KEY,
+    authDomain: process.env.FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    appId: process.env.FIREBASE_APP_ID,
+  });
+}
