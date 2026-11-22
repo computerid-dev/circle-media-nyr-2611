@@ -9,6 +9,7 @@
 <style>
 :root{--bg:#1e2128;--panel:#252932;--line:#343a46;--text:#e6e9ef;--muted:#9aa3b2;--accent:#4f5fd6;--r:6px}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,sans-serif}
 button,input{font:inherit;color:inherit}
 button{background:var(--accent);border:0;border-radius:var(--r);padding:8px 14px;cursor:pointer;transition:opacity .15s}
@@ -91,7 +92,16 @@ import {getAuth,signInWithEmailAndPassword,onAuthStateChanged,signOut} from 'htt
 import {getFirestore,collection,doc,getDoc,addDoc,deleteDoc,updateDoc,onSnapshot,query,orderBy,limit} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const $ = (s) => document.querySelector(s);
-const config = await (await fetch('/api/config')).json();
+let config;
+try {
+  const r = await fetch('/api/config');
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
+  config = d;
+} catch (e) {
+  $('#err').textContent = 'Backend belum siap: ' + e.message;
+  throw e;
+}
 const firebaseApp = initializeApp(config);
 const auth = getAuth(firebaseApp);
 const db = getFirestore(firebaseApp);
